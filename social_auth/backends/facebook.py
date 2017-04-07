@@ -31,7 +31,7 @@ from social_auth.backends.exceptions import AuthException, AuthCanceled, \
 
 
 # Facebook configuration
-FACEBOOK_ME = 'https://graph.facebook.com/me?'
+FACEBOOK_ME = 'https://graph.facebook.com/v2.8/me?'
 ACCESS_TOKEN = 'https://graph.facebook.com/oauth/access_token?'
 
 
@@ -107,9 +107,9 @@ class FacebookAuth(BaseOAuth2):
                 raise AuthFailed(self, 'There was an error authenticating '
                                        'the app')
 
-            access_token = response['access_token'][0]
-            if 'expires' in response:
-                expires = response['expires'][0]
+            access_token = response['access_token']
+            if 'expires_in' in response:
+                expires = response['expires_in']
 
         if 'signed_request' in self.data:
             response = load_signed_request(self.data.get('signed_request'),
@@ -122,8 +122,8 @@ class FacebookAuth(BaseOAuth2):
                                response.get('oauth_token') or \
                                self.data.get('access_token')
 
-                if 'expires' in response:
-                    expires = response['expires']
+                if 'expires_in' in response:
+                    expires = response['expires_in']
 
         if access_token:
             data = self.user_data(access_token)
