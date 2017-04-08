@@ -19,7 +19,14 @@ import time
 from urllib import urlencode
 from urllib2 import HTTPError
 
-from django.utils import simplejson
+try:
+    import json as simplejson
+except ImportError:
+    try:
+        import simplejson
+    except ImportError:
+        from django.utils import simplejson
+
 from django.contrib.auth import authenticate
 
 from social_auth.backends import BaseOAuth2, OAuthBackend, USERNAME
@@ -32,7 +39,7 @@ from social_auth.backends.exceptions import AuthException, AuthCanceled, \
 
 # Facebook configuration
 FACEBOOK_ME = 'https://graph.facebook.com/v2.8/me?'
-ACCESS_TOKEN = 'https://graph.facebook.com/oauth/access_token?'
+ACCESS_TOKEN = 'https://graph.facebook.com/v2.8/oauth/access_token?'
 
 
 class FacebookBackend(OAuthBackend):
@@ -58,7 +65,7 @@ class FacebookAuth(BaseOAuth2):
     AUTH_BACKEND = FacebookBackend
     RESPONSE_TYPE = None
     SCOPE_SEPARATOR = ','
-    AUTHORIZATION_URL = 'https://www.facebook.com/dialog/oauth'
+    AUTHORIZATION_URL = 'https://www.facebook.com/v2.8/dialog/oauth'
     SETTINGS_KEY_NAME = 'FACEBOOK_APP_ID'
     SETTINGS_SECRET_NAME = 'FACEBOOK_API_SECRET'
     SCOPE_VAR_NAME = 'FACEBOOK_EXTENDED_PERMISSIONS'
@@ -102,14 +109,16 @@ class FacebookAuth(BaseOAuth2):
                 'code': self.data['code']
             })
             try:
-                response = cgi.parse_qs(dsa_urlopen(url).read())
+                payload = dsa_urlopen(url)
             except HTTPError:
                 raise AuthFailed(self, 'There was an error authenticating '
                                        'the app')
 
-            access_token = response['access_token']
-            if 'expires_in' in response:
-                expires = response['expires_in']
+            response = payload.read()
+            parsed_response = simplejson.loads(response)
+            access_token = parsed_response['access_token']
+            if 'expires_in' in parsed_response:
+                expires = parsed_response['expires_in']
 
         if 'signed_request' in self.data:
             response = load_signed_request(self.data.get('signed_request'),
@@ -122,8 +131,8 @@ class FacebookAuth(BaseOAuth2):
                                response.get('oauth_token') or \
                                self.data.get('access_token')
 
-                if 'expires_in' in response:
-                    expires = response['expires_in']
+                if 'expires' in response:
+                    expires = response['expires']
 
         if access_token:
             data = self.user_data(access_token)
